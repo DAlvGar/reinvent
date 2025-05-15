@@ -47,7 +47,9 @@ class MatchingSubstructure:
                 self.patterns.append(pattern)
 
         if not self.patterns:
-            raise RuntimeError(f"{__name__}: no valid SMARTS patterns found")
+            raise ValueError(f"{__name__}: no valid SMARTS patterns found")
+
+        self.number_of_endpoints = len(params.smarts)
 
     @molcache
     def __call__(self, mols: List[Chem.Mol]) -> np.array:

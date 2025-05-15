@@ -32,9 +32,7 @@ METHOXYHYDRAZINE = "CONN"
 HYDROPEROXYMETHANE = "COO"
 SCAFFOLD_SUZUKI = "Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)[*]"
 CELECOXIB_FRAGMENT = "*c1cc(C(F)(F)F)nn1-c1ccc(S(N)(=O)=O)cc1"
-REACTION_SUZUKI = (
-    "[*;$(c2aaaaa2),$(c2aaaa2):1]-!@[*;$(c2aaaaa2),$(c2aaaa2):2]>>[*:1][*].[*:2][*]"
-)
+REACTION_SUZUKI = "[*;$(c2aaaaa2),$(c2aaaa2):1]-!@[*;$(c2aaaaa2),$(c2aaaa2):2]>>[*:1][*].[*:2][*]"
 DECORATION_SUZUKI = "[*]c1ncncc1"
 TWO_DECORATIONS_SUZUKI = "[*]c1ncncc1|[*]c1ncncc1"
 TWO_DECORATIONS_ONE_SUZUKI = "[*]c1ncncc1|[*]C"
@@ -47,6 +45,19 @@ WARHEAD_PAIR = "*C1CCCCC1|*C1CCCC(ON)C1"
 WARHEAD_TRIPLE = "*N(C)C|*Cc1cncc(C#N)c1|*C[C@@H](O)CC(=O)O"
 WARHEAD_QUADRUPLE = "*C[C@@H](O)CC(=O)O|*N(C)C|*c1ccccc1|*Cc1cncc(C#N)c1"
 LINKER_TRIPLE = "[*]Cc1ccc(-c2cccc(COc3cc(O[*])c(CN[*])cc3Cl)c2C)c(C)c1-c1ccccc1"
+
+SCAFFOLD_SINGLE_POINT = "[*]C(=O)N[C@@H](C)C(=O)C(C)C"
+SCAFFOLD_DOUBLE_POINT = "[*]C(CCn1nnc2ccccc2c1=O)C(=O)[*]"
+SCAFFOLD_TRIPLE_POINT = "[*]c1nc([*])nc(N)c1C(=O)C[C@@H](CNS(N)(=O)=O)C(=O)[*]"
+SCAFFOLD_QUADRUPLE_POINT = "[*]C(=O)C1CC(O)CN1C(O)C([n+]1cc([*])n(-c2ccc([*])c(F)c2)n1)C(C)(C)[*]"
+THREE_DECORATIONS = "[*]c1ncncc1|[*]c1ncncc1|[*]C"
+FOUR_DECORATIONS = "[*]c1ncncc1|[*]c1ncncc1|[*]C|[*]C"
+
+PEPINVENT_INPUT1 = "?|N[C@@H](CO)C(=O)|?|N[C@@H](Cc1ccc(O)cc1)C(=O)|N(C)[C@@H]([C@@H](C)O)C(=O)|N[C@H](Cc1c[nH]cn1)C(=O)|N[C@@H](CC(=O)N)C2(=O)"
+PEPINVENT_INPUT2 = "?|?|?|N[C@@H](CCC(=O)O)C(=O)|N[C@@H]([C@@H](C)O)C(=O)|NCC(=O)|N[C@@H](CCC(=O)O)C(=O)|N[C@@H](Cc1ccccc1)C(=O)|N[C@@H](CC(C)C)C(=O)O"
+PEPINVENT_INPUT3 = "?|NCC(=O)|N[C@@H](CC(=O)O)C(=O)|N[C@@H]([C@H]1C[C@H](OC(C)(C)O1)CO)C(=O)|N(C)[C@@H](CCC(=O)O)C(=O)|?|N(C)[C@@H](Cc1c[nH]c2ccccc12)C(=O)|?|N[C@@H](CCSC)C(=O)|?|N[C@@H](Cc1c[nH]cn1)C(=O)|N[C@@H](c1sc(S3)nc1c1ccc(F)cc1)C(=O)O"
+PEPINVENT_OUTPUT1 = "N2[C@@H](CC(=O)N)C(=O)|N[C@@H](CNC(=O)N1CCC[C@@H]1[C@H](O)C(F)(F)F)C(=O)"
+PEPINVENT_OUTPUT2 = "N[C@@H](Cc1ccccc1)C(=O)|N[C@@H]([C@@H](C)O)C(=O)|NCC(=O)|N(C)[C@@H](CC(C)C)C(=O)|N1[C@@H](CCC1)C(=O)"
 
 IBUPROFEN_TOKENIZED = [
     "^",

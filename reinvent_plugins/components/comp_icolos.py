@@ -17,6 +17,7 @@ from pydantic.dataclasses import dataclass
 from .component_results import ComponentResults
 from .run_program import run_command
 from .add_tag import add_tag
+from reinvent_plugins.normalize import normalize_smiles
 
 
 @add_tag("__parameters")
@@ -46,7 +47,10 @@ class Icolos:
         self.executable = params.executable
         self.config_filenames = params.config_file
         self.step_id = 0
+        self.number_of_endpoints = len(params.name)
+        self.smiles_type = "rdkit_smiles"
 
+    @normalize_smiles
     def __call__(self, smilies: List[str]) -> np.array:
         scores = []
 
@@ -103,18 +107,18 @@ def parse_output(filename: str, name: str) -> List:
     """
 
     if not os.path.isfile(filename):
-        raise RuntimeError(f"{__name__}: failed, missing output file")
+        raise ValueError(f"{__name__}: failed, missing output file")
 
     with open(filename, "r") as jfile:
         data = json.load(jfile)
 
     # TODO: this should be properly validated
     if "results" not in data:
-        raise RuntimeError(f"{__name__}: JSON file does not contain 'results'")
+        raise ValueError(f"{__name__}: JSON file does not contain 'results'")
 
     # FIXME: check if scores are really in the same order as the SMILES
     for entry in data["results"]:
         if entry["values_key"] == name:
             return entry["values"]
 
-    raise RuntimeError(f"{__name__}: JSON file does not contain scores for {name}")
+    raise ValueError(f"{__name__}: JSON file does not contain scores for {name}")

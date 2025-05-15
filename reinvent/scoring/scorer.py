@@ -11,34 +11,73 @@ A scorer can be call through API, REST API or subprocess.
 from __future__ import annotations
 
 __all__ = ["Scorer"]
+
+from pathlib import Path
 from typing import List, Optional
 import logging
 
 import numpy as np
-import pathos as pa
-from pathos.pools import ParallelPool
 
+from reinvent.utils import config_parse
 from . import aggregators
 from .config import get_components
 from .compute_scores import compute_transform
 from .results import ScoreResults
+from .validation import ScorerConfig
 
 
 logger = logging.getLogger(__name__)
 
 
+def setup_scoring(config: dict) -> dict:
+    """Update scoring component from file if requested
+
+    :param config: scoring dictionary
+    :returns: scoring dictionary
+    """
+
+    component_filename = config.get("filename", "")
+    component_filetype = config.get("filetype", "toml")
+
+    if component_filename:
+        component_filename = Path(component_filename).resolve()
+
+        if component_filename.exists():
+            ext = component_filename.suffix
+
+            if ext in (f".{e}" for e in config_parse.INPUT_FORMAT_CHOICES):
+                fmt = ext[1:]
+            else:
+                fmt = component_filetype
+
+            logger.info(f"Reading score components from {component_filename}")
+
+            input_config = config_parse.read_config(component_filename, fmt)
+            config.update(input_config)
+        else:
+            logger.error(f"Component file {component_filename} not found")
+
+    config["filename"] = None  # delete for dump as we now should have all components
+
+    return config
+
+
 class Scorer:
     """The main handler for a request to a scoring function"""
 
-    def __init__(self, config: dict):
+    def __init__(self, input_config: dict):
         """Set up the scorer
 
-        :param config: scoring configuration
+        :param input_config: scoring configuration
         """
-        self.aggregate = getattr(aggregators, config["type"])
-        self.parallel = config.get("parallel", False)
 
-        self.components = get_components(config["component"])
+        cfg = setup_scoring(input_config)
+        config = ScorerConfig(**cfg)
+
+        self.aggregate = getattr(aggregators, config.type)
+        self.parallel = config.parallel
+
+        self.components = get_components(config.component)
 
     def compute_results(
         self,
@@ -65,7 +104,7 @@ class Scorer:
 
         # if self.parallel and ntasks > 1:
         if False:
-            cpu_count = pa.helpers.cpu_count()
+            cpu_count = 2
             nodes = min(cpu_count, ntasks)
             pool = ParallelPool(nodes=nodes)
 
@@ -86,7 +125,6 @@ class Scorer:
                     component.params,
                     smilies,
                     component.cache,
-                    invalid_mask,
                     valid_mask,
                 )
 
@@ -107,7 +145,6 @@ class Scorer:
                     component.params,
                     pass_smilies,
                     component.cache,
-                    invalid_mask,
                     valid_mask,
                 )
 
@@ -132,7 +169,6 @@ class Scorer:
                 component.params,
                 smilies,
                 component.cache,
-                invalid_mask,
                 valid_mask,
             )
 

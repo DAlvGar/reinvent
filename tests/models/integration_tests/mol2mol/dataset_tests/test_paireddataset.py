@@ -18,7 +18,7 @@ class TestPairedDataset(unittest.TestCase):
         self.smiles_input = [ETHANE, PROPANE]
         self.smiles_output = [HEXANE, BUTANE]
 
-        save_dict = torch.load(self.json_config["MOLFORMER_PRIOR_PATH"])
+        save_dict = torch.load(self.json_config["MOLFORMER_PRIOR_PATH"], weights_only=False)
         model = Mol2MolModel.create_from_dict(save_dict, "inference", torch.device(self.device))
         set_torch_device(self.device)
 
@@ -95,7 +95,7 @@ class TestPairedDataset(unittest.TestCase):
     def test_src_content(self):
         result = self._get_src()
         comparison = torch.equal(
-            result, torch.tensor([[1, 17, 17, 2, 0], [1, 17, 17, 17, 2]]).to(self.device)
+            result, torch.tensor([[1, 60, 60, 2, 0], [1, 60, 60, 60, 2]]).to(self.device)
         )
         self.assertTrue(comparison)
 
@@ -113,7 +113,7 @@ class TestPairedDataset(unittest.TestCase):
         result = self._get_trg()
         comparison = torch.equal(
             result,
-            torch.tensor([[1, 17, 17, 17, 17, 17, 17, 2], [1, 17, 17, 17, 17, 2, 0, 0]]).to(
+            torch.tensor([[1, 60, 60, 60, 60, 60, 60, 2], [1, 60, 60, 60, 60, 2, 0, 0]]).to(
                 self.device
             ),
         )

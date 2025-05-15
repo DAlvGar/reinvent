@@ -1,28 +1,19 @@
 import pytest
 
-from reinvent.runmodes.reporter.remote import (
-    setup_reporter,
-    get_reporter,
-    NoopReporter,
-    RemoteJSONReporter,
-)
+from reinvent.utils.logmon import RemoteJSONReporter, get_reporter, setup_reporter
 
 
 def test_noop_reporter_without_setup():
     remote_reporter = get_reporter()
 
-    assert type(remote_reporter) == NoopReporter
-
-    remote_reporter.send()
+    assert remote_reporter == None
 
 
 def test_noop_reporter_with_setup():
     setup_reporter(url=None, token=None)
     remote_reporter = get_reporter()
 
-    assert type(remote_reporter) == NoopReporter
-
-    remote_reporter.send()
+    assert remote_reporter == None
 
 
 def test_reporter_is_json_reporter():

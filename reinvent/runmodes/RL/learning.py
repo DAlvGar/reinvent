@@ -10,7 +10,7 @@ from __future__ import annotations
 __all__ = ["Learning"]
 import logging
 import time
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -18,33 +18,38 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
-from ..reporter import remote
-from .reports.tensorboard import TBData, write_report as tb_report
-from .reports.remote import RemoteData, send_report
-from .reports.csv_summmary import CSVSummary, write_summary
+try:
+    from iSIM.comp import calculate_isim
+    from iSIM.utils import binary_fps
+
+    have_isim = True
+except ImportError:
+    have_isim = False
+
+from .reports import RLTBReporter, RLCSVReporter, RLRemoteReporter, RLReportData
 from reinvent.runmodes.RL.data_classes import ModelState
 from reinvent.models.model_factory.sample_batch import SmilesState
-from reinvent.runmodes.reporter.remote import get_reporter, NoopReporter
-
+from reinvent.utils import get_reporter
+from reinvent_plugins.normalizers.rdkit_smiles import normalize
 
 if TYPE_CHECKING:
     from reinvent.runmodes.samplers import Sampler
     from reinvent.runmodes.RL import RLReward, terminator_callable
     from reinvent.runmodes.RL.memories import Inception
-    from reinvent.runmodes.dtos import ChemistryHelpers
     from reinvent.models import ModelAdapter
     from reinvent.scoring import Scorer, ScoreResults
 
 logger = logging.getLogger(__name__)
-remote_reporter = remote.get_reporter()
 
 
 class Learning(ABC):
     """Partially abstract base class for the Template Method pattern"""
 
+    # FIXME: too many arguments
     def __init__(
         self,
         max_steps: int,
+        stage_no: int,
         prior: ModelAdapter,
         state: ModelState,
         scoring_function: Scorer,
@@ -54,15 +59,16 @@ class Learning(ABC):
         distance_threshold: int,
         rdkit_smiles_flags: dict,
         inception: Inception = None,
-        chemistry: ChemistryHelpers = None,
         responder_config: dict = None,
         tb_logdir: str = None,
         checkpoint_frequency: int = 0,
         checkpoint_callback = None,
+        tb_isim: bool = False,
     ):
         """Setup of the common framework"""
 
         self.max_steps = max_steps
+        self.stage_no = stage_no
         self.prior = prior
 
         # Seed the starting state, need update in every stage
@@ -84,8 +90,6 @@ class Learning(ABC):
         if "isomericSmiles" in self.rdkit_smiles_flags:
             self.isomeric = True
 
-        self.chemistry = chemistry
-
         self._state_info = {"name": "staged learning", "version": 1}
 
         # Pass on the sampling results to the specific RL class:
@@ -99,12 +103,14 @@ class Learning(ABC):
         if responder_config:
             self.logging_frequency = max(1, responder_config.get("frequency", 1))
 
+        self.reporters = []
         self.tb_reporter = None
+        self._setup_reporters(tb_logdir)
 
-        if tb_logdir:
-            self.tb_reporter = SummaryWriter(log_dir=tb_logdir)
+        self.tb_isim = None
 
-        self.reporter = get_reporter()
+        if have_isim:
+            self.tb_isim = tb_isim
 
         self.start_time = 0
 
@@ -116,7 +122,7 @@ class Learning(ABC):
     def optimize(self, converged: terminator_callable) -> bool:
         """Run the multistep optimization loop
 
-        Sample from the agent, score the SNILES, update the agent parameters.
+        Sample from the agent, score the SMILES, update the agent parameters.
         Log some key characteristics of the current step.
 
         :param converged: a callable that determines convergence
@@ -135,8 +141,9 @@ class Learning(ABC):
             )
 
             results = self.score()
+            if self.prior.model_type == "Libinvent":
+                results.smilies = normalize(results.smilies, keep_all=True)
 
-            # FIXME: move this to scoring
             if self._state.diversity_filter:
                 df_mask = np.where(self.invalid_mask, True, False)
 
@@ -178,7 +185,7 @@ class Learning(ABC):
                 logger.info(f"Terminating early in {step = }")
                 break
 
-        if self.tb_reporter:
+        if self.tb_reporter:  # FIXME: context manager?
             self.tb_reporter.flush()
             self.tb_reporter.close()
 
@@ -189,8 +196,11 @@ class Learning(ABC):
 
     __call__ = optimize
 
-    def get_state_dict(self):
+    def get_state_dict(self) -> Optional[dict]:
         """Return the state dictionary"""
+
+        if "agent" not in self._state_info:
+            return None
 
         model_dict = self._state_info["agent"].get_save_dict()
         state_dict = {**model_dict}
@@ -199,7 +209,7 @@ class Learning(ABC):
             staged_learning=dict(
                 name=self._state_info["name"],
                 version=self._state_info["version"],
-                diversity_filter=self._state_info["diversity_filter"],
+                diversity_filter=self._state_info["diversity_filter"],  # FIXNE: serialization
             )
         )
 
@@ -235,10 +245,7 @@ class Learning(ABC):
         result = self._state.agent.likelihood_smiles(self.sampled)
 
         agent_nlls = result.likelihood
-        _input = result.batch.input  # SMILES
-        _output = result.batch.output  # SMILES
-
-        prior_nlls = self.prior.likelihood(*_input, *_output)
+        prior_nlls = self.prior.likelihood_smiles(self.sampled).likelihood
 
         # NOTE: only Reinvent has inception at the moment, would need the
         #       SMILES
@@ -259,11 +266,8 @@ class Learning(ABC):
         :return: total loss
         """
         likelihood_dto = self._state.agent.likelihood_smiles(self.sampled)
-        batch = likelihood_dto.batch
 
-        prior_nlls = self.prior.likelihood(
-            batch.input, batch.input_mask, batch.output, batch.output_mask
-        )
+        prior_nlls = self.prior.likelihood_smiles(self.sampled).likelihood
 
         agent_nlls = likelihood_dto.likelihood
 
@@ -276,6 +280,26 @@ class Learning(ABC):
             self._state.agent,
             np.argwhere(self.sampled.states == SmilesState.VALID).flatten(),
         )
+
+    def _setup_reporters(self, tb_logdir):
+        """Setup for reporters"""
+
+        remote_reporter = get_reporter()
+        tb_reporter = None
+
+        if tb_logdir:
+            tb_reporter = SummaryWriter(log_dir=tb_logdir)
+            self.tb_reporter = tb_reporter
+
+        self.reporters.append(RLCSVReporter(None))  # we always need this ine
+
+        # FIXME: needs a cleaner design, maybe move to caller
+        for kls, args in (
+            (RLTBReporter, (tb_reporter,)),
+            (RLRemoteReporter, (remote_reporter, self.logging_frequency)),
+        ):
+            if args[0]:
+                self.reporters.append(kls(*args))
 
     # FIXME: still needed: molecule ID
     def report(
@@ -296,11 +320,11 @@ class Learning(ABC):
 
         NLL_prior = -prior_lls.cpu().detach().numpy()
         NLL_agent = -agent_lls.cpu().detach().numpy()
-        NLL_augm = augmented_nll.cpu().detach().numpy()
+        NLL_augmented = augmented_nll.cpu().detach().numpy()
 
         prior_mean = NLL_prior.mean()
         agent_mean = NLL_agent.mean()
-        augm_mean = NLL_augm.mean()
+        augmented_mean = NLL_augmented.mean()
 
         mask_valid = np.where(
             (self.sampled.states == SmilesState.VALID)
@@ -316,88 +340,49 @@ class Learning(ABC):
         fract_duplicate_smiles = num_duplicate_smiles / len(mask_duplicates)
 
         smilies = np.array(self.sampled.smilies)[mask_valid]
+
+        isim = None
+
+        if self.tb_isim:
+            fingerprints = binary_fps(smilies, fp_type="RDKIT", n_bits=None)
+            isim = calculate_isim(fingerprints, n_ary="JT")
+
+        if self.prior.model_type == "Libinvent":
+            smilies = normalize(smilies, keep_all=True)
+
         mask_idx = (np.argwhere(mask_valid).flatten(),)
 
-        if self.tb_reporter:
-            tb_data = TBData(
-                step_no,
-                score_results,
-                smilies,
-                prior_nll=prior_mean,
-                agent_nll=agent_mean,
-                augmented_nll=augm_mean,
-                loss=loss,
-                fraction_valid_smiles=fract_valid_smiles,
-                fraction_duplicate_smiles=fract_duplicate_smiles,
-                bucket_max_size=diversity_filter.scaffold_memory.max_size
-                if diversity_filter
-                else None,
-                num_full_buckets=diversity_filter.scaffold_memory.count_full()
-                if diversity_filter
-                else None,
-                num_total_buckets=len(diversity_filter.scaffold_memory)
-                if diversity_filter
-                else None,
-                mean_score=mean_score,
-                mask_idx=mask_idx,
-            )
-
-            tb_report(self.tb_reporter, tb_data)
-
-        if (step == 0 or step % self.logging_frequency == 0) and not isinstance(
-            self.reporter, NoopReporter
-        ):
-            logger.info(
-                f"remote reporting at step {step} with reporter type: {self.reporter.__class__.__name__}"
-            )
-
-            report = RemoteData(
-                step_no,
-                score_results,
-                prior_nll=prior_mean,
-                agent_nll=agent_mean,
-                fraction_valid_smiles=fract_valid_smiles,
-                number_of_smiles=len(diversity_filter.smiles_memory) if diversity_filter else None,
-                start_time=self.start_time,
-                n_steps=self.max_steps,
-                mean_score=mean_score,
-                mask_idx=mask_idx,
-            )
-
-            send_report(report, self.reporter)
-
-        csv_summary = CSVSummary(
-            step_no, score_results, NLL_prior, NLL_agent, NLL_augm, scaffolds, self.sampled.states
+        report_data = RLReportData(
+            step=step_no,
+            stage=self.stage_no,
+            smilies=smilies,
+            isim=isim,  # Add isim to report_data
+            scaffolds=scaffolds,
+            sampled=self.sampled,
+            score_results=score_results,
+            prior_mean_nll=prior_mean,
+            agent_mean_nll=agent_mean,
+            augmented_mean_nll=augmented_mean,
+            prior_nll=NLL_prior,
+            agent_nll=NLL_agent,
+            augmented_nll=NLL_augmented,
+            loss=loss,
+            fraction_valid_smiles=fract_valid_smiles,
+            fraction_duplicate_smiles=fract_duplicate_smiles,
+            df_memory_smilies=len(diversity_filter.smiles_memory) if diversity_filter else 0,
+            bucket_max_size=(
+                diversity_filter.scaffold_memory.max_size if diversity_filter else None
+            ),
+            num_full_buckets=(
+                diversity_filter.scaffold_memory.count_full() if diversity_filter else None
+            ),
+            num_total_buckets=(len(diversity_filter.scaffold_memory) if diversity_filter else None),
+            mean_score=mean_score,
+            model_type=self._state.agent.model_type,
+            start_time=self.start_time,
+            n_steps=self.max_steps,
+            mask_idx=mask_idx,
         )
 
-        header, columns = write_summary(csv_summary, write_header=self.__write_csv_header)
-
-        if self.__write_csv_header:
-            self.__write_csv_header = False
-
-        lines = [" | " + " ".join(header)]
-        NUM_ROWS = 10  # FIXME
-
-        for i, row in enumerate(zip(*columns)):
-            if i >= NUM_ROWS:
-                break
-
-            out = []
-
-            for item in row:
-                if isinstance(item, (float, int, np.floating, np.integer)):
-                    num = f"{item:.2f}"
-                    out.append(num)
-                elif item is None:
-                    out.append("--")
-                else:
-                    out.append(item)
-
-            lines.append(" | " + " ".join(out))
-
-        lines = "\n".join(lines)
-
-        logger.info(
-            f"Score: {mean_score:.2f} Agent NLL: {agent_mean:.2f} Valid: {round(100 * fract_valid_smiles):3d}% Step: {step_no}\n"
-            f"{lines}"
-        )
+        for reporter in self.reporters:
+            reporter.submit(report_data)

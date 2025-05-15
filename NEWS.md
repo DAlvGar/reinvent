@@ -1,3 +1,47 @@
+New in REINVENT 4.5
+===================
+
+For details see CHANGELOG.md.
+
+* PepINVENT: transformer (SMILES) based peptide generator and prior model
+* Temperature factor parameter (transformer generators) for sampling and RL
+* Support script run-qsartuna.py to play QSARtuna models in external environment
+* Component-level parameters for scoring components
+* Renamed Qptuna scoring component to [QSARtuna](https://github.com/MolecularAI/QSARtuna)
+* Staged learning terminates on SIGTERM (Ctrl-C) and writes out checkpoint file
+* SIGUSR1 for graceful termination of staged learning runs
+* Relaxed dependencies to accomodate install of other software in same environment e.g. QSARtuna
+* Updated some dependencies e.g. PyTorch (now at version 2.4.1)
+* New notebook in contrib demoing docking with DockStream and OpenEye
+* YAML configuration file reader
+* Configuration file format is automatically detected from filename extension
+* Various code improvements and fixes
+
+
+New in REINVENT 4.4
+===================
+
+For details see CHANGELOG.md.
+
+* Transformer based Libinvent
+* Prior registry to load internal priors more easily
+* Strict validation of input configuration to ensure consistency
+* Better JSON configuration file writing
+* Metadata writing for all created RL and TL models
+* Import functionality for scoring runmode
+* Stages in staged learning can have their own diversity filters
+* More memory efficient transformer models to handle larger numbers of input SMILES
+* Additional (fragment) SMILES written to staged learning CSV
+* TanimotoDistance renamed to TanimotoSimilarity
+* Support for ChemProp multitask models: requires param.target\_column
+* Allow dot SMILES fragment separator for Lib/Linkinvent input
+* Optional [scheduler] section for TL
+* Example support script for RAScore
+* A more complete RL/TL demo notebook
+* Experimental data pipeline to preprocess SMILES for prior creation
+* Various code improvements and fixes
+
+
 New in REINVENT 4.3
 ===================
 

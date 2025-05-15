@@ -24,9 +24,13 @@ summary_csv_prefix = "staged_learning"  # prefix for the CSV file
 use_checkpoint = false  # if true read diversity filter from agent_file
 purge_memories = false  # if true purge all diversity filter memories after each stage
 
+
 ## Reinvent
 prior_file = "priors/reinvent.prior"
 agent_file = "priors/reinvent.prior"
+
+##ISIM
+tb_isim = false # if true track isim value of smilies across training epochs in tensorboard 
 
 ## LibInvent
 #prior_file = "priors/libinvent.prior"
@@ -42,6 +46,13 @@ agent_file = "priors/reinvent.prior"
 #prior_file = "priors/mol2mol_scaffold_generic.prior"
 #agent_file = "priors/mol2mol_scaffold_generic.prior"
 #smiles_file = "mol2mol.smi"  # 1 compound per line
+#sample_strategy = "multinomial"  # multinomial or beamsearch (deterministic)
+#distance_threshold = 100
+
+## Pepinvent
+#prior_file = "priors/pepinvent.prior"
+#agent_file = "priors/pepinvent.prior"
+#smiles_file = "pepinvent.smi"
 #sample_strategy = "multinomial"  # multinomial or beamsearch (deterministic)
 #distance_threshold = 100
 
@@ -88,6 +99,14 @@ termination = "simple"  # termination criterion fot this stage
 max_score = 0.6  # terminate if this total score is exceeded
 min_steps = 25  # run for at least this number of steps
 max_steps = 100  # terminate entire run when exceeded
+
+# Optionally, a DF can be set for each stage but note that the global DF
+# section above will always overwrite the stage section and you need to
+# delete [diversity_filter] to avoid this
+#
+#[stage.diversity_filter]
+#type = "IdenticalMurckoScaffold"
+# etc.
 
 [stage.scoring]
 type = "geometric_mean"  # aggregation function
@@ -161,7 +180,7 @@ max_steps = 100
 
 [stage.scoring]  # the scoring components can be read from a score file
 type = "geometric_mean"  # aggregation function
-filename = "stage2_scoring.toml"  # file with scoring setup for this stage
+filename = "configs/toml/stage2_scoring.toml"  # file with scoring setup for this stage
 filetype = "toml"  # file format: TOML or JSON, no default, must be present
 
 

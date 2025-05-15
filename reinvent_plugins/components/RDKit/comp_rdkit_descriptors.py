@@ -35,11 +35,13 @@ class RDKitDescriptors:
             desc = descriptor.lower()
 
             if desc not in KNOWN_DESCRIPTORS:
-                raise RuntimeError(f"{__name__}: unknown descriptor {desc}")
+                raise ValueError(f"{__name__}: unknown descriptor {desc}")
 
             descriptors.append(KNOWN_DESCRIPTORS[desc])
 
         self.calc = MolecularDescriptorCalculator(descriptors).CalcDescriptors
+
+        self.number_of_endpoints = len(params.descriptor)
 
         logger.info(f"Known RDKit descriptors: {' '.join(KNOWN_DESCRIPTORS.keys())}")
 

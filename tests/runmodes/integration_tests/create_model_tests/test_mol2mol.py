@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from reinvent.runmodes.create_model.mol2mol import create_model
+from reinvent.runmodes.create_model.create_mol2mol import create_model
 
 
 @pytest.mark.integration
@@ -34,7 +34,7 @@ class TestCreateModel(unittest.TestCase):
             output_model_path=self.output_file,
         )
 
-        model = torch.load(self.output_file)
+        model = torch.load(self.output_file, weights_only=False)
         keys = list(model.keys())
 
         self.assertEqual(
@@ -42,6 +42,7 @@ class TestCreateModel(unittest.TestCase):
             [
                 "model_type",
                 "version",
+                "metadata",
                 "vocabulary",
                 "max_sequence_length",
                 "network_parameter",

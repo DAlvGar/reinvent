@@ -28,7 +28,9 @@ class PMI:
         self.properties = params.property
 
         if not "npr1" in self.properties and not "npr2" in self.properties:
-            raise RuntimeError(f"{__name__}: need one or both of: 'npr1', 'npr2'")
+            raise ValueError(f"{__name__}: need one or both of: 'npr1', 'npr2'")
+
+        self.number_of_endpoints = len(params.property)
 
     @molcache
     def __call__(self, mols: List[Chem.Mol]) -> np.array:
@@ -36,15 +38,15 @@ class PMI:
         scores2 = []
 
         for mol in mols:
-            try:
-                mol3d = Chem.AddHs(mol)
-                Chem.EmbedMolecule(mol3d)
-
-                npr1 = Chem.CalcNPR1(mol3d)
-                npr2 = Chem.CalcNPR2(mol3d)
-            except ValueError:
+            mol3d = Chem.AddHs(mol)
+            embed_result = Chem.EmbedMolecule(mol3d)
+            
+            if embed_result == -1:  # embedding failed
                 npr1 = np.nan
                 npr2 = np.nan
+            else:
+                npr1 = Chem.CalcNPR1(mol3d)
+                npr2 = Chem.CalcNPR2(mol3d)
 
             scores1.append(npr1)
             scores2.append(npr2)

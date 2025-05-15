@@ -6,7 +6,6 @@ run_type = "sampling"
 device = "cuda:0"  # set torch device e.g. "cpu"
 json_out_config = "_sampling.json"  # write this TOML to JSON
 
-
 [parameters]
 
 # Uncomment one of the comment blocks below.  Each generator needs a model
@@ -26,6 +25,13 @@ model_file = "priors/reinvent.prior"
 ## Mol2Mol: find molecules similar to the provided molecules
 #model_file = "priors/mol2mol_medium_similarity.prior"
 #smiles_file = "mol2mol.smi"  # 1 compound per line
+#sample_strategy = "beamsearch"  # multinomial or beamsearch (deterministic)
+#temperature = 1.0 # temperature in multinomial sampling
+#tb_logdir = "tb_logs"  # name of the TensorBoard logging directory
+
+## Pepinvent
+#model_file = "priors/pepinvent.prior"
+#smiles_file = "pepinvent.smi"
 #sample_strategy = "beamsearch"  # multinomial or beamsearch (deterministic)
 #temperature = 1.0 # temperature in multinomial sampling
 #tb_logdir = "tb_logs"  # name of the TensorBoard logging directory
