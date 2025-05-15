@@ -305,7 +305,7 @@ def run_staged_learning(
     if callable(write_config):
         write_config(config.model_dump())
 
-    checkpoint_frequency = parameters.get("checkpoint_frequency", 0)
+    checkpoint_frequency = parameters.checkpoint_frequency
 
     with Handler() as handler:
         for run, package in enumerate(packages):
