@@ -12,6 +12,7 @@ import logging
 import time
 from typing import List, TYPE_CHECKING
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -56,6 +57,8 @@ class Learning(ABC):
         chemistry: ChemistryHelpers = None,
         responder_config: dict = None,
         tb_logdir: str = None,
+        checkpoint_frequency: int = 0,
+        checkpoint_callback = None,
     ):
         """Setup of the common framework"""
 
@@ -106,6 +109,9 @@ class Learning(ABC):
         self.start_time = 0
 
         self.__write_csv_header = True
+
+        self.checkpoint_frequency = checkpoint_frequency
+        self.checkpoint_callback = checkpoint_callback
 
     def optimize(self, converged: terminator_callable) -> bool:
         """Run the multistep optimization loop
@@ -159,6 +165,14 @@ class Learning(ABC):
                 augmented_nll=augmented_nll,
                 loss=float(loss),
             )
+
+            if self.checkpoint_frequency > 0 and self.checkpoint_callback and (step + 1) % self.checkpoint_frequency == 0:
+                checkpoint_filename = f"{self.checkpoint_callback.out_filename.stem}_step{step+1}{self.checkpoint_callback.out_filename.suffix}"
+                current_out_filename = self.checkpoint_callback.out_filename
+                self.checkpoint_callback.out_filename = Path(current_out_filename).parent / checkpoint_filename
+                self.checkpoint_callback.save()
+                self.checkpoint_callback.out_filename = current_out_filename
+                logger.info(f"Checkpoint saved at step {step+1} to {checkpoint_filename}")
 
             if converged(mean_scores, step):
                 logger.info(f"Terminating early in {step = }")

@@ -328,6 +328,8 @@ def run_staged_learning(
 
     model_learning = getattr(RL, f"{model_type}Learning")
 
+    checkpoint_frequency = parameters.get("checkpoint_frequency", 0)
+
     with Handler() as handler:
         for run, package in enumerate(packages):
             stage_no = run + 1
@@ -360,6 +362,8 @@ def run_staged_learning(
                 chemistry=chemistry,
                 responder_config=responder_config,
                 tb_logdir=logdir,
+                checkpoint_frequency=checkpoint_frequency,
+                checkpoint_callback=handler,
             )
 
             if device.type == "cuda" and torch.cuda.is_available():
