@@ -21,6 +21,7 @@ class SectionParameters(GlobalConfig):
     unique_sequences: bool = False
     temperature: float = 1.0
     tb_isim: Optional[bool] = False  # Add iSIM tracking as optional parameter
+    checkpoint_frequency: int = 0  # Save checkpoint every N steps (0 = only at end of stage)
 
 
 class SectionLearningStrategy(GlobalConfig):
