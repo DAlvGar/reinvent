@@ -227,7 +227,6 @@ class PharmScreenSimilarity:
             "-i", lib_sdf,
             "-x", "lib_preparation",
             "--ligprep",
-            "--genstereo",
             "-y", "gasteiger",
             "--logp", "at",
             "--key", self.license_file,
@@ -236,6 +235,7 @@ class PharmScreenSimilarity:
 
         if not self.generate_conformers_chemaxon:
             prep_cmd.append("--genconf")
+            prep_cmd.append("--genstereo")
             suffix = "_Conf_GChg_ATLogP.sdf"
         else:
             suffix = "_GChg_ATLogP.sdf"
