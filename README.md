@@ -1,6 +1,18 @@
 REINVENT 4
 ==========
 
+Fork content
+------------
+This fork introduces 2 main changes to main repo.
+
+1. Add a new configuration parameter to control intermediate checkpointing during RL runs:
+    - Introduce checkpoint_frequency in the configuration TOML file.
+    - This parameter accepts an integer specifying how often (in steps) to save intermediate checkpoints.
+    - Default value: 0 (only the final checkpoint is saved).
+    - If checkpoint_frequency > 0, a checkpoint is written every N steps.
+2. Added new scoring components:
+    - A new scoring component using Pharmacellera's Pharmscreen software. This requires executables and licenses not provided here. 
+    - A example custom sklearn QSAR scoring component.
 
 Description
 -----------
